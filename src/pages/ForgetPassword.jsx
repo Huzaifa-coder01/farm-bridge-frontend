@@ -1,39 +1,78 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '../components/ui/button';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 
 const ForgetPassword = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [otp, setOtp] = useState('');
     const [step, setStep] = useState(1);
-    const [newPassword, setnewPassword] = useState('');
+    const [confirmationResult, setConfirmationResult] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const navigate = useNavigate();
 
-    const handleSendOtp = () => {
+    useEffect(() => {
+        if (!window.recaptchaVerifier) {
+            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                size : 'invisible',
+                callback: (response) => {
+                    console.log('reCAPTCHA solved');
+                },
+                'expired-callback': () => {
+                    console.log('reCAPTCHA expired');
+                },
+            });
+        }
+    }, []);
+
+    const handleSendOtp = async () => {
         if (!phoneNumber.trim){
             alert('Enter Your Phone Number!');
             return;
         }
 
+        const fullPhoneNumber = phoneNumber.startsWith('+') ? phoneNumber : `+92${phoneNumber}`;
+
         setLoading(true);
 
-        setTimeout(() => {
-            alert('OTP sent to WhatsApp:', phoneNumber);
+        try {
+            if (!phoneNumber.startsWith('+')) {
+            setPhoneNumber(`+92${phoneNumber}`);
+            }
+            const appVerifier = window.recaptchaVerifier;
+            const confirmation = await signInWithPhoneNumber(auth, fullPhoneNumber, appVerifier);
+            setConfirmationResult(confirmation);
             setStep(2);
+            alert('OTP sent to your phone number!');
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            alert('Failed to send OTP. Make sure phone number is correct and try again.');
+            window.recaptchaVerifier.clear();
+            window.recaptchaVerifier = null;
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
-    const handleVerifyOtp = () => {
-        if (otp !== '123456') {
-            alert('Invalid OTP!');
+    const handleVerifyOtp = async () => {
+        if (!otp.trim()) {
+            alert('Enter OTP!');
             return;
         }
-        setStep(3);
-    }
+        
+        try {
+            await confirmationResult.confirm(otp);
+            setStep(3);
+            alert('OTP verified successfully! You can now reset your password.');
+        } catch (error) {
+            console.error('Error verifying OTP:', error);
+            alert('Invalid OTP. Please try again.');
+        }
+    };
 
     const handleResetPassword = () => {
         if (!newPassword || !confirmPassword) {
@@ -45,7 +84,7 @@ const ForgetPassword = () => {
             return;
         }
 
-        alert('Password has been reset successfully!');
+        alert('Password reset successfully!');
         navigate('/login');
     };
 
@@ -125,7 +164,7 @@ const ForgetPassword = () => {
                         type="password"
                         placeholder='Enter new password'
                         value={newPassword}
-                        onChange={(e) => setnewPassword(e.target.value)}
+                        onChange={(e) => setNewPassword(e.target.value)}
                         className='mb-4 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500'    
                     />
 
@@ -151,6 +190,7 @@ const ForgetPassword = () => {
                 </>
             )}
         </motion.div>
+        <div id="recaptcha-container"></div>
     </div>
   );
 };

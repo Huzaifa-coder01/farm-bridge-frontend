@@ -1,40 +1,42 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion';
 import { Button } from '../components/ui/button';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/use-toast';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 
 const Login = () => {
-    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const { toast } = useToast();
 
-    const handlelogin = () => {
-        if (name === 'testuser' && password === 'password') {
-            setLoading(true);
-            setLoading(true);
-            setTimeout(() => {
-                toast({
-                    title: 'Success',
-                    description: 'Successfully logged in!',
-                    status: 'success',
-                    duration: 3000,
-                    isClosable: true,
-                });
-                navigate('/');
-                setLoading(false);
-            }, 1000);
-        } else {
+    const handlelogin = async () => {
+        setLoading(true);
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+
+            toast({
+                title: 'Success',
+                description: 'Login successfull!',
+                status: 'success',
+                duration: 3000,
+            });
+
+            localStorage.setItem('isLoggedIn', 'true');
+
+            navigate('/');
+        } catch (error) {
             toast({
                 title: 'Error',
-                description: 'Invalid Name or Password!',
+                description: error.message,
                 status: 'error',
                 duration: 3000,
-                isClosable: true,
             });
         }
+        setLoading(false);
         };
 
     const handleForgetPassword =() => {
@@ -54,17 +56,17 @@ const Login = () => {
 
             <div className="mb-4">
                 <label 
-                    htmlFor="name" 
+                    htmlFor="email" 
                     className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                    Name
+                    Email
                 </label>
                 <input 
-                    type="text"
-                    id='name'
-                    placeholder='Your Name'
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    type="email"
+                    id='email'
+                    placeholder='Your Email'
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
             </div>

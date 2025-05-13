@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgetPassword from "./pages/ForgetPassword";
+import Cart from "./pages/Cart";
 
 function App() {
   return (
@@ -135,6 +136,19 @@ function App() {
                     transition={{ duration: 0.3 }}
                   >
                     <ForgetPassword />
+                  </motion.div>
+                } 
+              />
+              <Route 
+                path="/cart" 
+                element={
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Cart />
                   </motion.div>
                 } 
               />

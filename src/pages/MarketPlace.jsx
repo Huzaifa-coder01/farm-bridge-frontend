@@ -4,8 +4,11 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Search, Filter } from "lucide-react";
 import Navbar from "../components/Navbar";
+import { useNavigate } from "react-router-dom";
 
 const MarketPlace = () => {
+  const navigate = useNavigate();
+
   const handleWhatsAppChat = (phoneNumber) => {
     const message = encodeURIComponent(
       "Hello, I am interested in the crop you have listed. Can we discuss further?"
@@ -13,6 +16,10 @@ const MarketPlace = () => {
     const WhatsAppURL = `https://wa.me/${phoneNumber}?text=${message}`;
     window.open(WhatsAppURL, "_blank");
   };
+
+  const handleBuyNow = (product) => {
+    navigate("/cart", {state: { product } });
+  }
 
   return (
     <div>
@@ -77,10 +84,33 @@ const MarketPlace = () => {
                     </span>
                   </div>
                   <div className="mt-4 flex space-x-2">
-                    <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+                    <Button
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => {
+                        // Add item to cart logic
+                        const product = {
+                          id: item,
+                          name: "Premium Wheat Crop",
+                          price: 1800,
+                          quantity: 1,
+                          available: 500,
+                          image: "https://images.unsplash.com/photo-1554731217-e6b83553c823",
+                        };
+                        // Save to localStorage or state management
+                        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+                        const existingProductIndex = cart.findIndex((p) => p.id === product.id);
+                        if (existingProductIndex !== -1) {
+                          cart[existingProductIndex].quantity += 1;
+                        } else {
+                          cart = [...cart, product];
+                        }
+                        localStorage.setItem("cart", JSON.stringify(cart));
+                        alert("Item added to cart successfully!");
+                        handleBuyNow(product);
+                      }}
+                    >
                       Buy Now
-                    </Button>
-                    <Button 
+                    </Button><Button 
                       variant="outline" 
                       className="flex-1"
                       onClick={() => handleWhatsAppChat("+92 3023444757")}
