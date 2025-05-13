@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Copy } from "lucide-react";
 import Navbar from "../components/Navbar";
+import { auth, setUpRecaptcha } from "../lib/firebase";
 
 const ConsumerSignup = () => {
   const { toast } = useToast();
@@ -16,6 +17,7 @@ const ConsumerSignup = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [showBankDetails, setShowBankDetails] = useState(false);
+  const [verificationId, setVerificationId] = useState(null);
 
   const bankDetails = {
     accountTitle: "Farm Bridge",
@@ -31,11 +33,32 @@ const ConsumerSignup = () => {
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    setOtpSent(true);
-    toast({
-      title: "OTP Sent",
-      description: "Please check your WhatsApp for the verification code",
-    });
+    const phoneNumber = "+92" + formData.whatsapp;
+
+    if (!formData.whatsapp || formData.whatsapp.length < 10) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const confirmationResult = await setUpRecaptcha(phoneNumber);
+      setVerificationId(confirmationResult.verificationId);
+      setOtpSent(true);
+      toast({
+        title: "OTP Sent",
+        description: "An OTP has been sent to your WhatsApp number",
+      });
+    } catch (error) {
+      toast({
+        title: "Error Sending OTP",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCopyBankDetails = (text) => {
@@ -48,7 +71,7 @@ const ConsumerSignup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!otpSent) {
+    if (!otpSent || !otp || !verificationId) {
       toast({
         title: "Verification Required",
         description: "Please verify your WhatsApp number first",
@@ -57,7 +80,25 @@ const ConsumerSignup = () => {
       return;
     }
 
-    setShowBankDetails(true);
+    const credential = window.firebase.auth.PhoneAuthProvider.credential(
+      verificationId,
+      otp
+    );
+
+    try {
+      await auth.signInWithCredential(credential);
+      setShowBankDetails(true);
+      toast({
+        title: "OTP Verified",
+        description: "You can now proceed to payment",
+      });
+    } catch (error) {
+      toast({
+        title: "Invalid OTP",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -167,6 +208,7 @@ const ConsumerSignup = () => {
               >
                 Proceed to Payment
               </Button>
+              <div id="recaptcha-container" className="hidden"></div>
             </form>
             
             {showBankDetails && (

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Upload } from "lucide-react";
 import Navbar from "../components/Navbar";
+import { auth, setUpRecaptcha } from "../lib/firebase";
+import { signInWithPhoneNumber } from "firebase/auth";
 
 const FarmerSignup = () => {
   const { toast } = useToast();
@@ -17,6 +19,7 @@ const FarmerSignup = () => {
   });
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
+  const [confirmationCode, setConfirmationCode] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -32,17 +35,48 @@ const FarmerSignup = () => {
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    // In a real implementation, this would make an API call to send OTP
-    setOtpSent(true);
-    toast({
-      title: "OTP Sent",
-      description: "Please check your WhatsApp for the verification code",
-    });
+    if (!formData.whatsapp) {
+      toast({
+        title: "WhatsApp Number Required",
+        description: "Please enter your WhatsApp number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const recaptcha = new setUpRecaptcha(
+        "recaptcha-container",
+        {
+          size: "invisible",
+          callback: () => {},
+        },
+        auth
+      );
+      const formattedPhone = formData.whatsapp.startsWith("+")
+        ? formData.whatsapp
+        : `+92${formData.whatsapp.replace(/^0/, "")}`;
+
+        const result = await signInWithPhoneNumber(auth, formattedPhone, recaptcha);
+        setConfirmationCode(result);
+        setOtpSent(true);
+
+        toast({
+          title: "OTP Sent",
+          description: "Please check your WhatsApp for the OTP",
+        });
+    } catch (error) {
+      toast({
+        title: "Error Sending OTP",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!otpSent) {
+    if (!otpSent || !otp || !confirmationCode) {
       toast({
         title: "Verification Required",
         description: "Please verify your WhatsApp number first",
@@ -51,11 +85,19 @@ const FarmerSignup = () => {
       return;
     }
 
-    // In a real implementation, this would verify OTP and submit data
-    toast({
-      title: "Registration Successful",
-      description: "Your farmer account has been created",
-    });
+    try {
+      await confirmationCode.confirm(otp);
+      toast({
+        title: "OTP Verified",
+        description: "You can now complete your registration",
+      });
+    } catch (error) {
+      toast({
+        title: "Error Verifying OTP",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -187,6 +229,7 @@ const FarmerSignup = () => {
                 Complete Registration
               </Button>
             </form>
+            <div id="recaptcha-container"></div>
           </motion.div>
         </div>
       </div>
